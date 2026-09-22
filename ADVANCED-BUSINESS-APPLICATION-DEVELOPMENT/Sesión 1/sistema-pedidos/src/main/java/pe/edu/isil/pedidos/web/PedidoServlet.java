@@ -6,116 +6,562 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import pe.edu.isil.pedidos.domain.Pedido;
 import pe.edu.isil.pedidos.service.PedidoException;
 import pe.edu.isil.pedidos.service.PedidoService;
 
-/**
- * Servlet que maneja las solicitudes relacionadas con los pedidos.
- */
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
 @WebServlet("/pedidos")
-public class PedidoServlet
-    extends HttpServlet {
+public class PedidoServlet extends HttpServlet {
 
   @EJB
   private PedidoService pedidoService;
 
-  /**
-   * Maneja las solicitudes GET para mostrar la página de pedidos.
-   * @param request  Objeto HttpServletRequest que contiene la solicitud del cliente.
-   * @param response Objeto HttpServletResponse que contiene la respuesta al cliente.
-   * @throws ServletException Si ocurre un error en el servlet.
-   * @throws IOException      Si ocurre un error de entrada/salida.
-   */
+
+  // =========================================================
+  // GET
+  // =========================================================
+
   @Override
-  protected void doGet(HttpServletRequest request, HttpServletResponse response)
-      throws ServletException, IOException {
+  protected void doGet(
+          HttpServletRequest request,
+          HttpServletResponse response)
+          throws ServletException, IOException {
+
     cargarDatosVista(request);
-    request.getRequestDispatcher("/WEB-INF/views/pedidos.jsp")
-        .forward(request, response);
+
+    request.getRequestDispatcher(
+            "/WEB-INF/views/pedidos.jsp"
+    ).forward(request, response);
   }
 
-  /**
-   * Maneja las solicitudes POST para registrar un nuevo pedido.
-   * @param request  Objeto HttpServletRequest que contiene la solicitud del cliente.
-   * @param response Objeto HttpServletResponse que contiene la respuesta al cliente.
-   * @throws ServletException Si ocurre un error en el servlet.
-   * @throws IOException      Si ocurre un error de entrada/salida.
-   */
+
+  // =========================================================
+  // POST
+  // REGISTRAR / SOLUCIÓN BASE
+  // =========================================================
+
   @Override
-  protected void doPost(HttpServletRequest request, HttpServletResponse response)
-      throws ServletException, IOException {
-    request.setCharacterEncoding(StandardCharsets.UTF_8.name());
+  protected void doPost(
+          HttpServletRequest request,
+          HttpServletResponse response)
+          throws ServletException, IOException {
+
+    request.setCharacterEncoding(
+            StandardCharsets.UTF_8.name()
+    );
+
+    String action =
+            request.getParameter("action");
+
+
+    // =====================================================
+    // SOLUCIÓN BASE:
+    // POST + action=actualizar
+    // =====================================================
+
+    if ("actualizar".equalsIgnoreCase(action)) {
+
+      procesarActualizacionPost(
+              request,
+              response
+      );
+
+      return;
+    }
+
+
+    // =====================================================
+    // SOLUCIÓN BASE:
+    // POST + action=eliminar
+    // =====================================================
+
+    if ("eliminar".equalsIgnoreCase(action)) {
+
+      procesarEliminacionPost(
+              request,
+              response
+      );
+
+      return;
+    }
+
+
+    // =====================================================
+    // REGISTRAR PEDIDO
+    // POST normal
+    // =====================================================
 
     try {
-      String cliente = request.getParameter("cliente");
-      Long productoId = Long.valueOf(request.getParameter("productoId"));
-      int cantidad = Integer.parseInt(request.getParameter("cantidad"));
 
-      Pedido pedido = pedidoService.registrarPedido(cliente, productoId, cantidad);
+      String cliente =
+              request.getParameter("cliente");
 
-      // Patrón PRG (Post/Redirect/Get) para evitar reenvíos de formularios
-      response.sendRedirect(request.getContextPath() + "/pedidos?creado="
-              + pedido.getId());
+      Long productoId =
+              Long.valueOf(
+                      request.getParameter("productoId")
+              );
+
+      int cantidad =
+              Integer.parseInt(
+                      request.getParameter("cantidad")
+              );
+
+
+      Pedido pedido =
+              pedidoService.registrarPedido(
+                      cliente,
+                      productoId,
+                      cantidad
+              );
+
+
+      // PRG:
+      // Post / Redirect / Get
+
+      response.sendRedirect(
+              request.getContextPath()
+                      + "/pedidos?creado="
+                      + pedido.getId()
+      );
+
+
     } catch (NumberFormatException e) {
-      mostrarErrorNegocio(request, response, "Producto o cantidad inválidos.");
+
+      mostrarError(
+              request,
+              response,
+              "Los datos numéricos del pedido no son válidos.",
+              HttpServletResponse.SC_BAD_REQUEST
+      );
+
+
     } catch (PedidoException e) {
-      mostrarErrorNegocio(request, response, e.getMessage());
+
+      mostrarErrorNegocio(
+              request,
+              response,
+              e.getMessage()
+      );
+
+
     } catch (RuntimeException e) {
-      mostrarErrorGeneral(request, response);
+
+      mostrarError(
+              request,
+              response,
+              "Ocurrió un error interno al registrar el pedido.",
+              HttpServletResponse.SC_INTERNAL_SERVER_ERROR
+      );
     }
   }
 
-  /**
-   * Carga los datos necesarios para la vista de pedidos.
-   * @param request Objeto HttpServletRequest que contiene la solicitud del cliente.
-   */
-  private void cargarDatosVista(HttpServletRequest request) {
-    request.setAttribute("productos", pedidoService.listarProductos());
-    request.setAttribute("pedidos", pedidoService.listarPedidos());
+
+  // =========================================================
+  // SOLUCIÓN BASE
+  // POST + action=actualizar
+  // =========================================================
+
+  private void procesarActualizacionPost(
+          HttpServletRequest request,
+          HttpServletResponse response)
+          throws ServletException, IOException {
+
+    try {
+
+      Long pedidoId =
+              Long.valueOf(
+                      request.getParameter("id")
+              );
+
+      String cliente =
+              request.getParameter("cliente");
+
+      Long productoId =
+              Long.valueOf(
+                      request.getParameter("productoId")
+              );
+
+      int cantidad =
+              Integer.parseInt(
+                      request.getParameter("cantidad")
+              );
+
+
+      pedidoService.actualizarPedido(
+              pedidoId,
+              cliente,
+              productoId,
+              cantidad
+      );
+
+
+      /*
+       * Redirección después del POST.
+       *
+       * Evita que el navegador vuelva a enviar
+       * el formulario al actualizar la página.
+       */
+
+      response.sendRedirect(
+              request.getContextPath()
+                      + "/pedidos?actualizado="
+                      + pedidoId
+      );
+
+
+    } catch (NumberFormatException e) {
+
+      mostrarError(
+              request,
+              response,
+              "Los datos enviados para actualizar no son válidos.",
+              HttpServletResponse.SC_BAD_REQUEST
+      );
+
+
+    } catch (PedidoException e) {
+
+      if (e.getMessage() != null
+              && e.getMessage()
+              .toLowerCase()
+              .contains("no existe")) {
+
+        mostrarError(
+                request,
+                response,
+                e.getMessage(),
+                HttpServletResponse.SC_NOT_FOUND
+        );
+
+      } else {
+
+        mostrarErrorNegocio(
+                request,
+                response,
+                e.getMessage()
+        );
+      }
+
+
+    } catch (RuntimeException e) {
+
+      mostrarError(
+              request,
+              response,
+              "Ocurrió un error interno al actualizar el pedido.",
+              HttpServletResponse.SC_INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
-  /**
-   * Muestra un mensaje de error en la vista de pedidos.
-   * @param request  Objeto HttpServletRequest que contiene la solicitud del cliente.
-   * @param response Objeto HttpServletResponse que contiene la respuesta al cliente.
-   * @param mensaje  Mensaje de error a mostrar.
-   * @throws ServletException Si ocurre un error en el servlet.
-   * @throws IOException      Si ocurre un error de entrada/salida.
-   */
-  private void mostrarErrorNegocio(HttpServletRequest request, HttpServletResponse response, String mensaje)
-      throws ServletException, IOException {
-    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 
-    request.setAttribute("clienteIngresado", request.getParameter("cliente"));
-    request.setAttribute("cantidadIngresada", request.getParameter("cantidad"));
-    request.setAttribute("error", mensaje);
+  // =========================================================
+  // SOLUCIÓN BASE
+  // POST + action=eliminar
+  // =========================================================
+
+  private void procesarEliminacionPost(
+          HttpServletRequest request,
+          HttpServletResponse response)
+          throws ServletException, IOException {
+
+    try {
+
+      Long pedidoId =
+              Long.valueOf(
+                      request.getParameter("id")
+              );
+
+
+      pedidoService.eliminarPedido(
+              pedidoId
+      );
+
+
+      response.sendRedirect(
+              request.getContextPath()
+                      + "/pedidos?eliminado="
+                      + pedidoId
+      );
+
+
+    } catch (NumberFormatException e) {
+
+      mostrarError(
+              request,
+              response,
+              "El ID del pedido no es válido.",
+              HttpServletResponse.SC_BAD_REQUEST
+      );
+
+
+    } catch (PedidoException e) {
+
+      if (e.getMessage() != null
+              && e.getMessage()
+              .toLowerCase()
+              .contains("no existe")) {
+
+        mostrarError(
+                request,
+                response,
+                e.getMessage(),
+                HttpServletResponse.SC_NOT_FOUND
+        );
+
+      } else {
+
+        mostrarErrorNegocio(
+                request,
+                response,
+                e.getMessage()
+        );
+      }
+
+
+    } catch (RuntimeException e) {
+
+      mostrarError(
+              request,
+              response,
+              "Ocurrió un error interno al eliminar el pedido.",
+              HttpServletResponse.SC_INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+
+  // =========================================================
+  // SOLUCIÓN AVANZADA
+  // PUT
+  // =========================================================
+
+  @Override
+  protected void doPut(
+          HttpServletRequest request,
+          HttpServletResponse response)
+          throws IOException {
+
+    try {
+
+      Long pedidoId =
+              Long.valueOf(
+                      request.getParameter("id")
+              );
+
+      String cliente =
+              request.getParameter("cliente");
+
+      Long productoId =
+              Long.valueOf(
+                      request.getParameter("productoId")
+              );
+
+      int cantidad =
+              Integer.parseInt(
+                      request.getParameter("cantidad")
+              );
+
+
+      pedidoService.actualizarPedido(
+              pedidoId,
+              cliente,
+              productoId,
+              cantidad
+      );
+
+
+      response.setStatus(
+              HttpServletResponse.SC_OK
+      );
+
+      response.setContentType(
+              "text/plain;charset=UTF-8"
+      );
+
+      response.getWriter().write(
+              "Pedido actualizado correctamente."
+      );
+
+
+    } catch (NumberFormatException e) {
+
+      response.sendError(
+              HttpServletResponse.SC_BAD_REQUEST,
+              "Los datos enviados no son válidos."
+      );
+
+
+    } catch (PedidoException e) {
+
+      if (e.getMessage() != null
+              && e.getMessage()
+              .toLowerCase()
+              .contains("no existe")) {
+
+        response.sendError(
+                HttpServletResponse.SC_NOT_FOUND,
+                e.getMessage()
+        );
+
+      } else {
+
+        response.sendError(
+                HttpServletResponse.SC_BAD_REQUEST,
+                e.getMessage()
+        );
+      }
+
+
+    } catch (RuntimeException e) {
+
+      response.sendError(
+              HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+              "Error interno al actualizar el pedido."
+      );
+    }
+  }
+
+
+  // =========================================================
+  // SOLUCIÓN AVANZADA
+  // DELETE
+  // =========================================================
+
+  @Override
+  protected void doDelete(
+          HttpServletRequest request,
+          HttpServletResponse response)
+          throws IOException {
+
+    try {
+
+      Long pedidoId =
+              Long.valueOf(
+                      request.getParameter("id")
+              );
+
+
+      pedidoService.eliminarPedido(
+              pedidoId
+      );
+
+
+      response.setStatus(
+              HttpServletResponse.SC_OK
+      );
+
+      response.setContentType(
+              "text/plain;charset=UTF-8"
+      );
+
+      response.getWriter().write(
+              "Pedido eliminado correctamente."
+      );
+
+
+    } catch (NumberFormatException e) {
+
+      response.sendError(
+              HttpServletResponse.SC_BAD_REQUEST,
+              "El ID del pedido no es válido."
+      );
+
+
+    } catch (PedidoException e) {
+
+      if (e.getMessage() != null
+              && e.getMessage()
+              .toLowerCase()
+              .contains("no existe")) {
+
+        response.sendError(
+                HttpServletResponse.SC_NOT_FOUND,
+                e.getMessage()
+        );
+
+      } else {
+
+        response.sendError(
+                HttpServletResponse.SC_BAD_REQUEST,
+                e.getMessage()
+        );
+      }
+
+
+    } catch (RuntimeException e) {
+
+      response.sendError(
+              HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+              "Error interno al eliminar el pedido."
+      );
+    }
+  }
+
+
+  // =========================================================
+  // CARGAR DATOS PARA LA JSP
+  // =========================================================
+
+  private void cargarDatosVista(
+          HttpServletRequest request) {
+
+    request.setAttribute(
+            "productos",
+            pedidoService.listarProductos()
+    );
+
+    request.setAttribute(
+            "pedidos",
+            pedidoService.listarPedidos()
+    );
+  }
+
+
+  // =========================================================
+  // ERROR DE NEGOCIO
+  // =========================================================
+
+  private void mostrarErrorNegocio(
+          HttpServletRequest request,
+          HttpServletResponse response,
+          String mensaje)
+          throws ServletException, IOException {
+
+    mostrarError(
+            request,
+            response,
+            mensaje,
+            HttpServletResponse.SC_BAD_REQUEST
+    );
+  }
+
+
+  // =========================================================
+  // MOSTRAR ERROR EN JSP
+  // =========================================================
+
+  private void mostrarError(
+          HttpServletRequest request,
+          HttpServletResponse response,
+          String mensaje,
+          int status)
+          throws ServletException, IOException {
+
+    response.setStatus(status);
+
+    request.setAttribute(
+            "error",
+            mensaje
+    );
 
     cargarDatosVista(request);
 
-    request.getRequestDispatcher("/WEB-INF/views/pedidos.jsp")
-        .forward(request, response);
-  }
-
-  /**
-   * Muestra un mensaje de error general en la vista de error.
-   * @param request  Objeto HttpServletRequest que contiene la solicitud del cliente.
-   * @param response Objeto HttpServletResponse que contiene la respuesta al cliente.
-   * @throws ServletException Si ocurre un error en el servlet.
-   * @throws IOException      Si ocurre un error de entrada/salida.
-   */
-  private void mostrarErrorGeneral(
-      HttpServletRequest request,
-      HttpServletResponse response)
-      throws ServletException, IOException {
-
-    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-
-    request.setAttribute("error", "Ocurrió un error interno al procesar la solicitud.");
-
-    request.getRequestDispatcher("/WEB-INF/views/error.jsp")
-        .forward(request, response);
+    request.getRequestDispatcher(
+            "/WEB-INF/views/pedidos.jsp"
+    ).forward(request, response);
   }
 }

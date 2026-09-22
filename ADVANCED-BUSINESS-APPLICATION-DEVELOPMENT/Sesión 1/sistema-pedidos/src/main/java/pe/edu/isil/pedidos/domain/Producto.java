@@ -17,20 +17,20 @@ public class Producto {
 
   @Id
   @GeneratedValue(
-      strategy = GenerationType.IDENTITY
+          strategy = GenerationType.IDENTITY
   )
   private Long id;
 
   @Column(
-      nullable = false,
-      length = 100
+          nullable = false,
+          length = 100
   )
   private String nombre;
 
   @Column(
-      nullable = false,
-      precision = 12,
-      scale = 2
+          nullable = false,
+          precision = 12,
+          scale = 2
   )
   private BigDecimal precio;
 
@@ -73,6 +73,14 @@ public class Producto {
     }
 
     stock -= cantidad;
+  }
+
+  public void reponerStock(int cantidad) {
+    if (cantidad <= 0) {
+      throw new IllegalArgumentException("La cantidad debe ser mayor que cero.");
+    }
+
+    stock += cantidad;
   }
 
 }

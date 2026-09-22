@@ -21,23 +21,23 @@ public class Pedido {
 
   @Id
   @GeneratedValue(
-      strategy = GenerationType.IDENTITY
+          strategy = GenerationType.IDENTITY
   )
   private Long id;
 
   @Column(
-      nullable = false,
-      length = 120
+          nullable = false,
+          length = 120
   )
   private String cliente;
 
   @ManyToOne(
-      fetch = FetchType.EAGER,
-      optional = false
+          fetch = FetchType.EAGER,
+          optional = false
   )
   @JoinColumn(
-      name = "producto_id",
-      nullable = false
+          name = "producto_id",
+          nullable = false
   )
   private Producto producto;
 
@@ -45,9 +45,9 @@ public class Pedido {
   private int cantidad;
 
   @Column(
-      nullable = false,
-      precision = 12,
-      scale = 2
+          nullable = false,
+          precision = 12,
+          scale = 2
   )
   private BigDecimal total;
 
@@ -87,6 +87,18 @@ public class Pedido {
 
   public LocalDateTime getFecha() {
     return fecha;
+  }
+
+  public void actualizarDatos(
+          String cliente,
+          Producto producto,
+          int cantidad,
+          BigDecimal total) {
+
+    this.cliente = cliente;
+    this.producto = producto;
+    this.cantidad = cantidad;
+    this.total = total;
   }
 
 }
