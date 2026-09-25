@@ -93,8 +93,9 @@ mvn clean wildfly:run
 El plugin de WildFly provisiona el servidor dentro de:
 
 target/server
+* Para acceder a la aplicacion primero ingresa a Maven  luego a plugins, en plugins selecciona wildfly y ahi haces doble click a wildfly:run luego esperas que cargue
 
-La aplicación queda disponible en:
+y ingresas al siguiente link:
 
 http://localhost:8081/sistema-pedidos/
 
@@ -102,9 +103,9 @@ También se puede acceder directamente a:
 
 http://localhost:8081/sistema-pedidos/pedidos
 
-Para detener WildFly:
+*Para detener WildFly:
+ingresas nuevamente a maven - plugins-wildfly y ahi haces doble click a wildfly:shutdown para que se detenga la ejecucion y la aplicacion
 
-Ctrl + C
 Flujo de la aplicación
 
 El flujo general de una operación es:
